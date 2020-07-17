@@ -1,0 +1,108 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+#include<pthread.h>
+
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+typedef struct {
+        int data[BUFSIZ];
+        int z;
+        int id;
+}buffer_t;
+
+void* averageCal(void* args){
+        pthread_mutex_lock(&lock);
+        buffer_t *bufferPtr=(buffer_t*) args;
+        int sum = 0;
+        float avg = 0;
+        int no_of_int = (bufferPtr->z);
+        int t_id = (bufferPtr->id);
+
+
+        for (int x = 0; x < no_of_int; x++){
+                sum +=(bufferPtr->data[x]);
+        }
+        printf("------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+        printf("Thread %d Sum is %d\n",t_id,sum);
+        avg = (float)sum/no_of_int;
+
+        printf("Thread %d Average is %.2f\n",t_id,avg);
+        printf("------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+
+        FILE *fptr = fopen("average.txt","a");
+        fprintf(fptr,"Threads %d data set average => %.2f\n",t_id, avg);
+        fclose(fptr);
+
+        pthread_mutex_unlock(&lock);
+        pthread_exit(0);
+}
+
+int main(void){
+
+        FILE *fptr1;
+        int count=0,pid;
+        char c;
+
+        fptr1=fopen("dataset.txt","r");
+
+        c = getc(fptr1);
+}
+        fclose(fptr1);
+
+        FILE *fptr2;
+
+        if((fptr2=fopen("dataset.txt","r"))==NULL){
+                printf("File can't open\n");
+                exit(0);
+        }
+        else{
+
+ i               char dataline[BUFSIZ];
+                int a=0;
+                int b;
+
+                pthread_t tid[count+1];
+                buffer_t buff[count+1];
+
+                while(fgets(dataline,sizeof dataline,fptr2)!=NULL){
+                        int value;
+                        int tmp=0;
+                        char *str = dataline;
+                        b=0;
+                        printf("Thread%d data set=>\t",a);
+                        while(sscanf(str,"%d%n",&value,&tmp)==1){
+                                buff[a].data[b]=value;
+                                str+=tmp;
+                                printf("%d\t",value);
+                                b++;
+                        }
+                        if (b ==0){
+                                printf("File contain a NULL data set please remove it and execute again\n");
+                                return 1;
+                        }
+                        printf("\n");
+
+                        buff[a].z = b;
+                        buff[a].id = a;
+                        pthread_create(&tid[a],NULL,averageCal,&buff[a]);
+                        a++;
+                }
+
+                for(int i=0; i<a; i++){
+                        pthread_join(tid[i],NULL);
+                }
+
+                fclose(fptr2);
+                pthread_mutex_destroy(&lock);
+
+
+                return 0;
+
+        }
+
+
+}
+
+
+

@@ -1,0 +1,90 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<unistd.h>
+#include<errno.h>
+#include<string.h>
+#include<sys/types.h>
+#include<sys/ipc.h>
+#include<sys/shm.h>
+#include<sys/sem.h>
+
+#define SEGSIZE 100
+
+void readshm(char *segptr);
+void downloadshm(char *shm, char *segptr);
+void description();
+
+int main(int argc,char *argv[]){
+        key_t key1, key2;
+        int shmid1 = 0, shmid2 = 0;
+        char *segptr = NULL , *shm = NULL;
+
+        if(argc ==1)
+                description();
+
+        key2=345;
+        if((shmid2=shmget(key2,1,0666))<0){
+                perror("shmget");
+                exit(1);
+        }
+        if((shm=(char*)shmat(shmid2,NULL,0))==(char*)-1){
+                perror("shmat");
+                exit(1);
+        }
+
+
+
+        key1 = ftok(".",123);
+        shmid1 = shmget(key1,SEGSIZE,0444);
+        if(shmid1 < 0){
+                perror("shmget");
+                exit(1);
+        }
+        printf("Shared Memory Exist-Opening as Student\n");
+        segptr = (char*)shmat(shmid1, NULL, 0);
+        if(segptr < 0){
+                perror("shmat");
+                exit(1);
+        }
+        switch(tolower(argv[1][0])){
+                case 'd':
+                        downloadshm(shm, segptr);
+                         break;
+
+                case 'r':
+                         readshm(segptr);
+                         break;
+                 default:
+                         description();
+
+        }
+}
+
+
+void readshm(char *segptr){
+        printf("segprt:%s\n",segptr);
+}
+
+void downloadshm(char *shm, char *segptr){
+        FILE *fptr;
+        char *filename;
+        printf("\n!-----Please Enter the File Name to Download the Content-----!: ");
+        scanf("%m[^\n]",&filename);
+        printf("Content is Downloaded to => %s\n......", filename);
+
+        if((fptr = fopen(filename,"w"))==NULL){
+                puts("File could not be opened.");
+        }
+        else{
+                fprintf(fptr,"%s\n",segptr);
+        }
+        fclose(fptr);
+        *shm='*';
+}
+
+void description(){
+        fprintf(stderr,"Welcome to Case Studies\n");
+        fprintf(stderr,"\nUSAGE:\n(r)ead\n");
+        fprintf(stderr,"(d)ownload <filename.txt>\n");
+        exit(1);
+}

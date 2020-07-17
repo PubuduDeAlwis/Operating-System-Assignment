@@ -1,0 +1,164 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<unistd.h>
+#include<errno.h>
+#include<string.h>
+#include<sys/types.h>
+#include<sys/ipc.h>
+#include<sys/shm.h>
+#include<sys/sem.h>
+
+#define SEGSIZE BUFSIZ
+void uploadshm(char *segptr, char *shm);
+void readshm(char *segptr);
+void downloadshm(char *segptr);
+void removeshm(int shmid1, int shmid2, char *shm);
+void description();
+
+int main(int argc,char *argv[]){
+        key_t key1, key2;
+        int shmid1 = 0, shmid2 = 0;
+        char *segptr = NULL, *shm = NULL;
+
+        if(argc ==1)
+                description();
+
+
+
+        key2=345;
+        if((shmid2=shmget(key2,1,IPC_CREAT | 0666))<0){
+                perror("shmget");
+                exit(1);
+        }
+        if ((shm=(char*)shmat(shmid2,NULL,0))==(char*)-1){
+                perror("shmat");
+                exit(1);
+        }
+
+
+
+        key1=ftok(".",123);
+        shmid1=shmget(key1,SEGSIZE,IPC_CREAT | IPC_EXCL | 0666);
+        if(shmid1 < 0){
+                printf("Case study Shared Memory Segment Exists - Opening as Lecturer\n");
+
+                if ((shmid1 = shmget(key1,SEGSIZE,0))==-1){
+                        perror("shmget");
+                        exit(1);
+                }
+        }
+ 	else{
+                printf("Creating Shared Memory for Case Study\n");
+        }
+        segptr = (char*)shmat(shmid1, NULL, 0);
+        if(segptr < 0){
+                perror("shmat");
+                exit(1);
+        }
+        switch(tolower(argv[1][0])){
+                case 'u':
+                        uploadshm(segptr, shm);
+                         break;
+                case 's':
+                         readshm(segptr);
+                         break;
+                case 'd':
+                         downloadshm(segptr);
+                         break;
+                case 'r':
+                         removeshm(shmid1, shmid2, shm);
+                         break;
+                default:
+                         description();
+
+        }
+}
+void uploadshm(char *segptr, char *shm){
+
+        printf("!--------------------Welcome to Case Study Uploading-------------------!\n");
+        FILE *fptr;
+        char content[BUFSIZ];
+        char *s, *filename;
+        s = segptr;
+
+        if(*shm=='u'){
+                printf("......Waiting for Downloading by Student.....\n");
+                while(*shm=='u')
+                        sleep(1);
+        }
+
+        printf("<<......Please Enter the File Name to Upload the Content......>>: ");
+        scanf("%m[^\n]",&filename);
+
+        printf("Uploading => %s file\n", filename);
+        fptr = fopen(filename, "r");
+        if(fptr==NULL){
+                puts("File Could not be Opened.");
+        }
+	printf("\nContent:-\n");
+        while(fgets(content, sizeof content, fptr)!=NULL){
+                char *str=content;
+                char c;
+                int temp=0;
+                while(sscanf(str,"%c%n", &c, &temp)==1){
+                        printf("%c",c);
+                        str+=temp;
+                        *s++=c;
+                }
+        }
+	printf("\n");
+        fclose(fptr);
+
+        printf("---------------Content Uploaded Successfully go shared memory---------------\n");
+        *shm='u';
+        if(*shm!='*'){
+                printf(".....Waiting for download  by the Student.....\n");
+                while(*shm!='*')
+                        sleep(1);
+        }
+
+}
+
+void readshm(char *segptr){
+        printf("Content:\n%s\n", segptr);
+}
+
+void downloadshm(char *segptr){
+        FILE *fptr;
+        char *filename;
+
+        printf("!-----Please Enter the File Name to Download the Content-----!: ");
+        scanf("%m[^\n]",&filename);
+        printf("Content is Downloade to => %s\n",filename);
+
+        if((fptr = fopen(filename,"w"))==NULL){
+                puts("File could not be opened.");
+        }
+        else{
+                fprintf(fptr,"%s\n",segptr);
+        }
+        fclose(fptr);
+}
+
+void removeshm(int shmid1, int shmid2, char *shm){
+        if(*shm!='*'){
+                printf("!!!-------Wait Untill student download the content------!!!\n");
+                while(*shm!='*'){
+                        sleep(1);
+                }
+        }
+
+        shmctl(shmid1,IPC_RMID,0);
+        shmctl(shmid2,IPC_RMID,0);
+        printf("!!!!!!Case Study Deleted!!!!!!\n");
+        exit(0);
+}
+
+void description(){
+        fprintf(stderr,"Welcome to Case Studies\n");
+        fprintf(stderr,"\nUSAGE:\n(u)upload\n");
+        fprintf(stderr,"(s)can\n");
+        fprintf(stderr,"(d)ownload\n");
+        fprintf(stderr,"(r)emove\n");
+        exit(1);
+}
